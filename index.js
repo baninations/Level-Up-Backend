@@ -106,7 +106,6 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-// POST route to login a user
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -120,8 +119,8 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "1h" });
-    res.status(200).json({ token });
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
+    res.status(200).json({ token, username: user.username }); // Include username in the response
   } catch (err) {
     res.status(500).json({ error: "Error logging in" });
   }
