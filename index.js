@@ -22,11 +22,14 @@ mongoose
 const reviewSchema = new mongoose.Schema({
   rating: { type: Number, required: true },
   review: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
 
 const Review = mongoose.model("Review", reviewSchema);
 
 // Routes
+
+// POST route to create a new review
 app.post("/api/reviews", async (req, res) => {
   const { rating, review } = req.body;
   try {
@@ -35,6 +38,16 @@ app.post("/api/reviews", async (req, res) => {
     res.status(201).json(newReview);
   } catch (err) {
     res.status(500).json({ error: "Error saving review" });
+  }
+});
+
+// GET route to retrieve all reviews
+app.get("/api/reviews", async (req, res) => {
+  try {
+    const reviews = await Review.find();
+    res.status(200).json(reviews);
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching reviews" });
   }
 });
 
