@@ -30,7 +30,7 @@ const authenticate = (req, res, next) => {
 };
 
 // MongoDB connection
-const mongoURI = "mongodb://localhost:27017";
+const mongoURI = "mongodb://localhost:27017/ratingService";
 mongoose
   .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("MongoDB connected"))
@@ -72,7 +72,7 @@ app.post("/api/reviews", async (req, res) => {
 });
 
 // GET route to retrieve all reviews
-app.get("/api/reviews", authenticate, async (req, res) => {
+app.get("/api/reviews", async (req, res) => {
   try {
     const reviews = await Review.find();
     res.status(200).json(reviews);
@@ -84,6 +84,7 @@ app.get("/api/reviews", authenticate, async (req, res) => {
 // POST route to register a new user
 app.post("/api/auth/register", async (req, res) => {
   const { email, password, phone, address, username } = req.body;
+  console.log("Received registration data:", req.body); // Debug statement
   try {
     let user = await User.findOne({ email });
     if (user) {
@@ -100,12 +101,14 @@ app.post("/api/auth/register", async (req, res) => {
 
     await user.save();
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
-    res.status(201).json({ token });
+    res.status(201).json({ token, userId: user._id, username: user.username }); // Include userId in the response
   } catch (err) {
+    console.error("Error registering user:", err.message); // Debug statement
     res.status(500).json({ error: "Error registering user" });
   }
 });
 
+// POST route to log in a user
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
   try {
@@ -120,9 +123,24 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
-    res.status(200).json({ token, username: user.username }); // Include username in the response
+    res.status(200).json({ token, username: user.username, userId: user._id }); // Include username and userId in the response
   } catch (err) {
     res.status(500).json({ error: "Error logging in" });
+  }
+});
+
+// GET route to retrieve user data by username
+app.get("/user/:username", async (req, res) => {
+  const { username } = req.params; // Get the username from the URL
+  try {
+    const user = await User.findOne({ username }); // Find the user by username
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ error: "User not found" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching user" });
   }
 });
 
