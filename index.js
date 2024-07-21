@@ -2,17 +2,36 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
-// Initialize the app
 const app = express();
 const PORT = process.env.PORT || 5000;
+// const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
+const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
+// Middleware to authenticate user
+const authenticate = (req, res, next) => {
+  const token = req.headers["authorization"];
+  if (!token) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  jwt.verify(token.split(" ")[1], JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ error: "Failed to authenticate token" });
+    }
+    req.userId = decoded.id; // Add userId to request object for further use
+    next(); // Pass the request to the next middleware
+  });
+};
+
 // MongoDB connection
-const mongoURI = "mongodb://localhost:27017";
+const mongoURI = "mongodb://localhost:27017/ratingService";
 mongoose
   .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("MongoDB connected"))
@@ -20,12 +39,39 @@ mongoose
 
 // Review Schema
 const reviewSchema = new mongoose.Schema({
-  rating: { type: Number, required: true },
-  review: { type: String, required: true },
+  rating: { type: Number, default: null },
+  review: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
 });
 
 const Review = mongoose.model("Review", reviewSchema);
+
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  phone: { type: String, required: true },
+  address: { type: String, required: true },
+  username: { type: String, required: true, unique: true },
+  createdAt: { type: Date, default: Date.now },
+  review: {
+    type: [
+      {
+        rating: { type: Number, default: null },
+        review: { type: String, default: "" },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [
+      {
+        rating: null,
+        review: "",
+        createdAt: Date.now(),
+      },
+    ],
+  },
+});
+
+const User = mongoose.model("User", userSchema);
 
 // Routes
 
@@ -41,13 +87,126 @@ app.post("/api/reviews", async (req, res) => {
   }
 });
 
-// GET route to retrieve all reviews
-app.get("/api/reviews", async (req, res) => {
+// GET route to retrieve reviews by username
+app.get("/api/reviews/:username", async (req, res) => {
+  const { username } = req.params;
   try {
-    const reviews = await Review.find();
+    const user = await User.findOne({ username: username });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Extract reviews from the user object
+    const reviews = user.review; // Note: Corrected from user.reviews to user.review
     res.status(200).json(reviews);
   } catch (err) {
+    console.error(err.message);
     res.status(500).json({ error: "Error fetching reviews" });
+  }
+});
+
+// POST route to register a new user
+app.post("/api/auth/register", async (req, res) => {
+  const { email, password, phone, address, username } = req.body;
+  console.log("Received registration data:", req.body); // Debug statement
+  try {
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    user = new User({
+      email,
+      password: await bcrypt.hash(password, 10),
+      phone,
+      address,
+      username,
+      review: [
+        {
+          rating: null,
+          review: "",
+          createdAt: new Date(),
+        },
+      ],
+    });
+
+    await user.save();
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
+    res.status(201).json({ token, userId: user._id, username: user.username }); // Include userId in the response
+  } catch (err) {
+    console.error("Error registering user:", err.message); // Debug statement
+    res.status(500).json({ error: "Error registering user" });
+  }
+});
+
+// POST route to submit a review for a user
+app.post("/api/users/:username/review", async (req, res) => {
+  const { username } = req.params;
+  const { rating, review } = req.body;
+
+  try {
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Push the new review object into the reviews array
+    user.review.push({
+      rating: rating,
+      review: review,
+      createdAt: new Date(),
+    });
+
+    await user.save();
+    res.status(200).json({ message: "Review submitted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: "Error submitting review" });
+  }
+});
+
+// POST route to log in a user
+app.post("/api/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
+    res.status(200).json({ token, username: user.username, userId: user._id }); // Include username and userId in the response
+  } catch (err) {
+    res.status(500).json({ error: "Error logging in" });
+  }
+});
+
+// GET route to retrieve user data by username
+app.get("/user/:username", async (req, res) => {
+  const { username } = req.params; // Get the username from the URL
+  try {
+    const user = await User.findOne({ username }); // Find the user by username
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ error: "User not found" });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching user" });
+  }
+});
+
+// GET route to retrieve all users (protected)
+app.get("/api/users", authenticate, async (req, res) => {
+  try {
+    const users = await User.find();
+    res.status(200).json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Error fetching users" });
   }
 });
 
