@@ -75,6 +75,8 @@ const User = mongoose.model("User", userSchema);
 
 // Routes
 
+app.get("/", (req, res) => res.send("LevelUp"));
+
 // POST route to create a new review
 app.post("/api/reviews", async (req, res) => {
   const { rating, review } = req.body;
