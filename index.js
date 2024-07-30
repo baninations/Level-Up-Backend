@@ -85,6 +85,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   address: { type: String, required: true },
   username: { type: String, required: true, unique: true },
+  ratingLink: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now },
   review: {
     type: [
@@ -145,7 +146,7 @@ app.get("/api/reviews/:username", async (req, res) => {
 
 // POST route to register a new user
 app.post("/api/auth/register", async (req, res) => {
-  const { email, password, phone, address, username } = req.body;
+  const { email, password, phone, address, username, ratingLink } = req.body;
   console.log("Received registration data:", req.body); // Debug statement
   try {
     let user = await User.findOne({ email });
@@ -159,6 +160,7 @@ app.post("/api/auth/register", async (req, res) => {
       phone,
       address,
       username,
+      ratingLink, // Ensure ratingLink is included here
       review: [
         {
           rating: null,
@@ -176,6 +178,40 @@ app.post("/api/auth/register", async (req, res) => {
     res.status(500).json({ error: "Error registering user" });
   }
 });
+
+// app.post("/api/auth/register", async (req, res) => {
+//   const { email, password, phone, address, username, ratingLink } = req.body;
+//   console.log("Received registration data:", req.body); // Debug statement
+//   try {
+//     let user = await User.findOne({ email });
+//     if (user) {
+//       return res.status(400).json({ error: "User already exists" });
+//     }
+
+//     user = new User({
+//       email,
+//       password: await bcrypt.hash(password, 10),
+//       phone,
+//       address,
+//       username,
+//       ratingLink,
+//       review: [
+//         {
+//           rating: null,
+//           review: "",
+//           createdAt: new Date(),
+//         },
+//       ],
+//     });
+
+//     await user.save();
+//     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
+//     res.status(201).json({ token, userId: user._id, username: user.username }); // Include userId in the response
+//   } catch (err) {
+//     console.error("Error registering user:", err.message); // Debug statement
+//     res.status(500).json({ error: "Error registering user" });
+//   }
+// });
 
 // POST route to submit a review for a user
 app.post("/api/users/:username/review", async (req, res) => {
