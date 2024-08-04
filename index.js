@@ -30,34 +30,6 @@ const authenticate = (req, res, next) => {
   });
 };
 
-// const { MongoClient, ServerApiVersion } = require("mongodb");
-// const uri = process.env.MONGO_URI;
-
-// // Create a MongoClient with a MongoClientOptions object to set the Stable API version
-// const client = new MongoClient(uri, {
-//   serverApi: {
-//     version: ServerApiVersion.v1,
-//     strict: true,
-//     deprecationErrors: true,
-//   },
-// });
-
-// async function run() {
-//   try {
-//     // Connect the client to the server	(optional starting in v4.7)
-//     await client.connect();
-//     // Send a ping to confirm a successful connection
-//     await client.db("admin").command({ ping: 1 });
-//     console.log(
-//       "Pinged your deployment. You successfully connected to MongoDB!"
-//     );
-//   } finally {
-//     // Ensures that the client will close when you finish/error
-//     await client.close();
-//   }
-// }
-// run().catch(console.dir);
-
 const mongoURI = process.env.MONGO_URI;
 mongoose
   .connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
@@ -103,7 +75,35 @@ const userSchema = new mongoose.Schema({
       },
     ],
   },
+  admin: { type: Boolean, default: false }, // New field with default value false
+  active: { type: Boolean, default: false }, // New field with default value false
 });
+
+// const userSchema = new mongoose.Schema({
+//   email: { type: String, required: true, unique: true },
+//   password: { type: String, required: true },
+//   phone: { type: String, required: true },
+//   address: { type: String, required: true },
+//   username: { type: String, required: true, unique: true },
+//   ratingLink: { type: String, default: "" },
+//   createdAt: { type: Date, default: Date.now },
+//   review: {
+//     type: [
+//       {
+//         rating: { type: Number, default: null },
+//         review: { type: String, default: "" },
+//         createdAt: { type: Date, default: Date.now },
+//       },
+//     ],
+//     default: [
+//       {
+//         rating: null,
+//         review: "",
+//         createdAt: Date.now(),
+//       },
+//     ],
+//   },
+// });
 
 const User = mongoose.model("User", userSchema);
 
@@ -145,6 +145,7 @@ app.get("/api/reviews/:username", async (req, res) => {
 });
 
 // POST route to register a new user
+// POST route to register a new user
 app.post("/api/auth/register", async (req, res) => {
   const { email, password, phone, address, username, ratingLink } = req.body;
   console.log("Received registration data:", req.body); // Debug statement
@@ -168,6 +169,7 @@ app.post("/api/auth/register", async (req, res) => {
           createdAt: new Date(),
         },
       ],
+      // No need to add 'admin' or 'active' here, they will default to false
     });
 
     await user.save();
@@ -194,7 +196,7 @@ app.post("/api/auth/register", async (req, res) => {
 //       phone,
 //       address,
 //       username,
-//       ratingLink,
+//       ratingLink, // Ensure ratingLink is included here
 //       review: [
 //         {
 //           rating: null,
