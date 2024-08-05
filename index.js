@@ -79,32 +79,6 @@ const userSchema = new mongoose.Schema({
   active: { type: Boolean, default: false }, // New field with default value false
 });
 
-// const userSchema = new mongoose.Schema({
-//   email: { type: String, required: true, unique: true },
-//   password: { type: String, required: true },
-//   phone: { type: String, required: true },
-//   address: { type: String, required: true },
-//   username: { type: String, required: true, unique: true },
-//   ratingLink: { type: String, default: "" },
-//   createdAt: { type: Date, default: Date.now },
-//   review: {
-//     type: [
-//       {
-//         rating: { type: Number, default: null },
-//         review: { type: String, default: "" },
-//         createdAt: { type: Date, default: Date.now },
-//       },
-//     ],
-//     default: [
-//       {
-//         rating: null,
-//         review: "",
-//         createdAt: Date.now(),
-//       },
-//     ],
-//   },
-// });
-
 const User = mongoose.model("User", userSchema);
 
 // Routes
@@ -181,40 +155,6 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-// app.post("/api/auth/register", async (req, res) => {
-//   const { email, password, phone, address, username, ratingLink } = req.body;
-//   console.log("Received registration data:", req.body); // Debug statement
-//   try {
-//     let user = await User.findOne({ email });
-//     if (user) {
-//       return res.status(400).json({ error: "User already exists" });
-//     }
-
-//     user = new User({
-//       email,
-//       password: await bcrypt.hash(password, 10),
-//       phone,
-//       address,
-//       username,
-//       ratingLink, // Ensure ratingLink is included here
-//       review: [
-//         {
-//           rating: null,
-//           review: "",
-//           createdAt: new Date(),
-//         },
-//       ],
-//     });
-
-//     await user.save();
-//     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "30d" });
-//     res.status(201).json({ token, userId: user._id, username: user.username }); // Include userId in the response
-//   } catch (err) {
-//     console.error("Error registering user:", err.message); // Debug statement
-//     res.status(500).json({ error: "Error registering user" });
-//   }
-// });
-
 // POST route to submit a review for a user
 app.post("/api/users/:username/review", async (req, res) => {
   const { username } = req.params;
@@ -283,6 +223,82 @@ app.get("/api/users", authenticate, async (req, res) => {
     res.status(200).json(users);
   } catch (err) {
     res.status(500).json({ error: "Error fetching users" });
+  }
+});
+
+// // PUT route to update user information
+// app.put("/api/users/:username", authenticate, async (req, res) => {
+//   const { username } = req.params;
+//   const { email, password, newUsername, ratingLink, active, admin } = req.body;
+
+//   try {
+//     const user = await User.findOne({ username });
+//     if (!user) {
+//       return res.status(404).json({ error: "User not found" });
+//     }
+
+//     // Check if the new email is already taken by another user
+//     if (email && email !== user.email) {
+//       const existingUser = await User.findOne({ email });
+//       if (existingUser) {
+//         return res.status(400).json({ error: "Email already in use" });
+//       }
+//     }
+
+//     // Check if the new username is already taken by another user
+//     if (newUsername && newUsername !== user.username) {
+//       const existingUser = await User.findOne({ username: newUsername });
+//       if (existingUser) {
+//         return res.status(400).json({ error: "Username already in use" });
+//       }
+//     }
+
+//     // Update fields
+//     user.email = email || user.email;
+//     user.username = newUsername || user.username;
+//     if (password) user.password = await bcrypt.hash(password, 10); // Hash the new password if provided
+//     user.ratingLink = ratingLink || user.ratingLink;
+//     if (typeof active !== "undefined") user.active = active;
+//     if (typeof admin !== "undefined") user.admin = admin;
+
+//     await user.save();
+//     res.status(200).json({ message: "User updated successfully", user });
+//   } catch (err) {
+//     console.error("Error updating user:", err.message);
+//     res.status(500).json({ error: "Error updating user" });
+//   }
+// });
+
+app.put("/api/users/:id", authenticate, async (req, res) => {
+  const { id } = req.params;
+  const {
+    email,
+    password,
+    username: newUsername,
+    ratingLink,
+    active,
+    admin,
+  } = req.body;
+
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update fields
+    user.email = email || user.email;
+    user.username = newUsername || user.username;
+    if (password) user.password = await bcrypt.hash(password, 10); // Hash the new password if provided
+    user.ratingLink = ratingLink || user.ratingLink;
+    if (typeof active !== "undefined") user.active = active;
+    if (typeof admin !== "undefined") user.admin = admin;
+
+    await user.save();
+    res.status(200).json({ message: "User updated successfully", user });
+  } catch (err) {
+    console.error("Error updating user:", err.message);
+    res.status(500).json({ error: "Error updating user" });
   }
 });
 
