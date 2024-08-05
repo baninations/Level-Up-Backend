@@ -11,8 +11,16 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 
 // Middleware
-app.use(cors());
 app.use(bodyParser.json());
+
+const corsOptions = {
+  origin: "https://www.alb-rev.com",
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
 
 // Middleware to authenticate user
 const authenticate = (req, res, next) => {
@@ -83,7 +91,7 @@ const User = mongoose.model("User", userSchema);
 
 // Routes
 
-app.get("/", (req, res) => res.send("LevelUp"));
+app.get("/", (req, res) => res.send("Alb-rev"));
 app.get("/test-page", (req, res) =>
   res.send("This is a test page to see if everything is going OK")
 );
