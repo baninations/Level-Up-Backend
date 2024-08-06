@@ -22,7 +22,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Middleware to authenticate user
+// Middleware to authenticate users
 const authenticate = (req, res, next) => {
   const token = req.headers["authorization"];
   if (!token) {
