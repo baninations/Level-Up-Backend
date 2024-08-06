@@ -14,7 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "your_jwt_secret";
 app.use(bodyParser.json());
 
 const corsOptions = {
-  origin: "https://www.alb-rev.com",
+  origin: ["https://www.alb-rev.com", "http://localhost:5173"],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   optionsSuccessStatus: 204,
